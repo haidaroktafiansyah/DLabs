@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -36,21 +37,24 @@ class UserController extends Controller
     public function get(Request $request)
     {
         try {
+            $count = $request->input('count', 10);
+            $sortBy = $request->input('sort_by', 'id');
+            $sortOrder = $request->input('sort_order', 'asc');
 
-            $count = $request->count ?: 10;
-            $sortBy = $request->sort_by ?: 'id';
-            $sortOrder = $request->sort_order ?: 'asc';
+            $cacheKey = 'users_' . $count . '_' . $sortBy . '_' . $sortOrder;
 
-            $users = DB::table('users')
-                ->leftJoin('roles', 'users.status', '=', 'roles.code')
-                ->select('users.*', 'roles.code as role_code', 'roles.privileges as role_privileges')
-                ->orderBy($sortBy, $sortOrder)
-                ->paginate($count)
-                ->toArray();
-                
-            unset($users['links']);
+            $cachedUsers = Cache::remember($cacheKey, now()->addMinutes(5), function () use ($count, $sortBy, $sortOrder) {
+                return DB::table('users')
+                    ->leftJoin('roles', 'users.status', '=', 'roles.code')
+                    ->select('users.*', 'roles.code as role_code', 'roles.privileges as role_privileges')
+                    ->orderBy($sortBy, $sortOrder)
+                    ->paginate($count);
+            });
 
-            return response()->json($users, 200);
+            $data = $cachedUsers->toArray();
+            unset($data['links']);
+
+            return response()->json($data, 200);
         } catch (Throwable $e) {
             return response()->json(['error' => 'Internal server error'], 500);
         }

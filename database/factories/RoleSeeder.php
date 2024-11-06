@@ -2,22 +2,15 @@
 
 namespace Database\Factories;
 
+use Illuminate\Database\Seeder;
 use App\Models\Role;
-use Illuminate\Database\Eloquent\Factories\Factory;
 
-class RoleFactory extends Factory
+class RoleSeeder extends Seeder
 {
-    protected $model = Role::class;
-
-    /**
-     * Define the model's default state.
-     *
-     * @return array
-     */
-    public function definition()
+    public function run()
     {
         $roles = [
-            ['code' => 'super_admin', 'privileges' => 'create,edit,delete'],
+            ['code' => 'superadmin', 'privileges' => 'create,edit,delete'],
             ['code' => 'admin', 'privileges' => 'create,edit'],
             ['code' => 'editor', 'privileges' => 'view,edit'],
             ['code' => 'viewer', 'privileges' => 'view'],
@@ -28,11 +21,11 @@ class RoleFactory extends Factory
             ['code' => 'guest', 'privileges' => 'view'],
         ];
 
-        $role = $this->faker->randomElement($roles);
-
-        return [
-            'code' => $role['code'],
-            'privileges' => $role['privileges'],
-        ];
+        foreach ($roles as $role) {
+            Role::updateOrCreate(
+                ['code' => $role['code']],
+                ['privileges' => $role['privileges']]
+            );
+        }
     }
 }
